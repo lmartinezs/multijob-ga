@@ -1,0 +1,43 @@
+{
+    "categories": [
+      {
+        "title": "## Features",
+        "labels": [
+          "feat:",
+          "enhacement"
+        ]
+      },
+      {
+        "title": "## Fixes",
+        "labels": [
+          "fix:",
+          "bug"
+        ]
+      },
+      {
+        "title": "## Chore",
+        "labels": [
+          "chore"
+        ]
+      },
+      {
+        "title": "## Tests",
+        "labels": [
+          "test"
+        ]
+      }
+    ],
+    "sort": "ASC",
+    "template": "${{CHANGELOG}}\n\n<details>\n\n<summary>Uncategorized changes</summary>\n\n${{UNCATEGORIZED}}\n</details>\n\nChangelog: ${{FROM_TAG}} ... ${{TO_TAG}}",
+    "pr_template": "- ${{TITLE}} by @${{AUTHOR}} in PR #${{NUMBER}}",
+    "label_extractor": [
+      {
+        "pattern": ".*(fix:|bug|feat:|chore|test).*",
+        "target": "$1",
+        "on_property": "title"
+      }
+    ],
+    "max_tags_to_fetch": 1000,
+    "max_pull_requests": 1000,
+    "max_back_track_time_days": 1000
+  }

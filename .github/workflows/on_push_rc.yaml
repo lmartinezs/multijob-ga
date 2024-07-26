@@ -1,0 +1,38 @@
+name: Detect PR Merge
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [closed]
+
+jobs:
+  detect-pr-merge:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Determine if this is a merge from a PR
+        id: check_pr_merge
+        run: |
+          if [ "${{ github.event.pull_request.merged }}" == "true" ]; then
+            echo "is_pr_merge=true" >> $GITHUB_ENV
+          else
+            echo "is_pr_merge=false" >> $GITHUB_ENV
+          fi
+
+      - name: Output result
+        run: |
+          if [ "${{ env.is_pr_merge }}" = "true" ]; then
+            echo "This commit is a merge from a PR."
+          else
+            echo "This commit is not a merge from a PR."
+          fi

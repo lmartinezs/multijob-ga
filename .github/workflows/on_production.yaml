@@ -1,0 +1,324 @@
+name: Publish-Release
+on:
+  push:
+    branches:
+      - production
+jobs:
+  check-release:
+    runs-on: ubuntu-latest
+    outputs:
+      from-rc: ${{ env.FROMRC }}   
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0          
+      - name: Push is from rc branch?      
+        run: |          
+          #FROMRC=$(git log -1 --pretty=%s HEAD | grep -e ".*from Grupo-Abraxas/rc/[0-9]" | wc -l)
+          FROMRC='1'
+          echo "FROMRC=$FROMRC" >> $GITHUB_ENV          
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+  publish-hotfix-to-production:
+    needs: check-release
+    permissions: write-all
+    if: needs.check-release.outputs.from-rc == '0'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          submodules: recursive
+          fetch-depth: 0
+      - name: Checkout pre-release and latest release
+        run: |
+            LATEST_RELEASE_TAG=$(gh release list | grep Latest | awk '{print $3}' | cut -c2-)
+            LATEST_PRE_RELEASE_TAG=$(gh release list | grep Pre-release | awk '{print $3}' | awk -F'-' '{print $1}')
+            echo "LATEST_PRE_RELEASE_TAG=$LATEST_PRE_RELEASE_TAG" >> $GITHUB_ENV
+            NEXT_DIGIT=$((LAST_DIGIT=$(echo $LATEST_RELEASE_TAG | cut -d 'c' -f 3 | cut -d '.' -f 3)+1))
+            CURRENT_DIGIT=$($LATEST_RELEASE_TAG | awk -F'.' '{print $3}')          
+            NEXT_TAG=$(echo "$LATEST_RELEASE_TAG" | sed 's/\([0-9]*\.[0-9]*\)\.\([0-9]*\)/\1.'"$NEXT_DIGIT"'/')
+            VALID_TAG='false'
+            if [[ ! -z $LATEST_PRE_RELEASE_TAG ]]; then 
+              if [[ "$NEXT_TAG" < "$LATEST_PRE_RELEASE_TAG" ]] || [[ "$NEXT_TAG" == "$LATEST_PRE_RELEASE_TAG" ]]; then
+                  NEW_TAG=$NEXT_TAG  
+                  VALID_TAG='true' 
+              fi
+            fi
+            if [[ -z $LATEST_PRE_RELEASE_TAG ]]; then 
+                VALID_TAG='true'
+                NEW_TAG=$NEXT_TAG
+            fi
+
+            echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+            echo "VALID_TAG=$VALID_TAG" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+      - run: npm install -g yarn
+      - run: git config --global url."https://".insteadOf git://
+      - run: yarn install
+      - name: Build
+        run: yarn build      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build, tag and push image to Amazon ECR
+        env:
+          DOCKER_REGISTRY: lmartinezs
+          DOCKER_REPOSITORY: reactapp
+          MERGE_BASE: origin/production          
+          VALID_TAG:  ${{ env.VALID_TAG }}
+          NEW_TAG:  ${{ env.NEW_TAG }}
+        run: |
+          GIT_HASH=$(git rev-parse --short=8 HEAD)
+          CHANGES=$(git diff $MERGE_BASE $GIT_HASH -- ':!controller/**' ':!init/**' | wc -l)
+          if [ $CHANGES -gt  0 ]; then   
+            if [[ "$VALID_TAG" == 'true' ]]; then
+              echo "buildig $REPOSITORY:$GIT_HASH"  
+              TIMESTAMP=$(date +%s)
+              docker build -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8} -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$NEW_TAG .
+              docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}
+              docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$NEW_TAG
+            else
+              docker build -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH .
+              #docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH
+            fi
+          else
+            echo "There are no changes about repository: $REPOSITORY"
+          fi
+      - name: init
+        env:
+          DOCKER_REGISTRY: lmartinezs
+          DOCKER_REPOSITORY: reactapp
+          MERGE_BASE: origin/production          
+          VALID_TAG:  ${{ env.VALID_TAG }}
+          NEW_TAG:  ${{ env.NEW_TAG }}
+        run: |
+          GIT_HASH=$(git rev-parse --short=8 HEAD)
+          CHANGES=$(git diff $MERGE_BASE $GIT_HASH -- 'init/**' | wc -l)
+          if [ $CHANGES -gt  0 ]; then   
+            if [[ "$VALID_TAG" == 'true' ]]; then
+              echo "buildig $REPOSITORY:$GIT_HASH"  
+              TIMESTAMP=$(date +%s)
+              docker build -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8} -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$NEW_TAG .
+              docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}
+              docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$NEW_TAG-init
+            else
+              docker build -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH--init .
+              #docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH
+            fi
+          else
+            echo "There are no changes about repository: $REPOSITORY"
+          fi
+      - name: controller
+        env:
+          DOCKER_REGISTRY: lmartinezs
+          DOCKER_REPOSITORY: reactapp
+          MERGE_BASE: origin/production          
+          VALID_TAG:  ${{ env.VALID_TAG }}
+          NEW_TAG:  ${{ env.NEW_TAG }}
+        run: |
+          GIT_HASH=$(git rev-parse --short=8 HEAD)
+          CHANGES=$(git diff $MERGE_BASE $GIT_HASH -- 'controller/**'| wc -l)
+          if [ $CHANGES -gt  0 ]; then   
+            if [[ "$VALID_TAG" == 'true' ]]; then
+              echo "buildig $REPOSITORY:$GIT_HASH"  
+              TIMESTAMP=$(date +%s)
+              docker build -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8} -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$NEW_TAG-controller .
+              docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}
+              docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$NEW_TAG-controller
+            else
+              docker build -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-controller .
+              #docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH
+            fi
+          else
+            echo "There are no changes about repository: $REPOSITORY"
+          fi
+      # - name: Create tag
+      #   if:  ${{ env.VALID_TAG == 'true' }} 
+      #   run: |
+      #       echo "NEW_TAG: v${{ env.NEW_TAG }}"
+      #       git tag -a v${{ env.NEW_TAG }} -m "Generated by jenkinsabraxas with GA"
+      #       git push origin v${{ env.NEW_TAG }}
+      #       LATEST_RELEASE=$(gh release list | grep -E 'Latest' | awk -F' ' '{print $3}')
+      #       echo "LATEST_RELEASE=${LATEST_RELEASE}" >> $GITHUB_ENV
+      #       echo LATEST_RELEASE
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Build Changelog
+      #   if:  ${{ env.VALID_TAG == 'true' }} 
+      #   id: build_changelog
+      #   uses: mikepenz/release-changelog-builder-action@v3.5.0
+      #   with:
+      #     configuration: .github/config/configuration.json
+      #     fromTag: ${{ env.LATEST_RELEASE }}
+      #     toTag: v${{ env.NEW_TAG }}
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Create Release
+      #   if:  ${{ env.VALID_TAG == 'true' }}  
+      #   id: release
+      #   uses: ncipollo/release-action@v1
+      #   with:
+      #     name: ${{ env.NEW_TAG }}
+      #     draft: false
+      #     allowUpdates: true
+      #     updateOnlyUnreleased: true
+      #     generateReleaseNotes: false
+      #     prerelease: false
+      #     tag: v${{ env.NEW_TAG }}
+      #     body: ${{steps.build_changelog.outputs.changelog}}
+
+  # publish-to-production:
+  #   needs: check-release
+  #   if: needs.check-release.outputs.from-rc == '1'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v2
+  #     with:
+  #       fetch-depth: 0
+  #   - name: Checkout latest release tag
+  #     run: |
+  #       LATEST_PRE_RELEASE_TAG=$(git describe --tags --match "*-rc*" --abbrev=0)
+  #       LATEST_RELEASE=$(gh release list | grep -E 'Latest' | awk -F' ' '{print $3}')
+  #       echo "LATEST_RELEASE=${LATEST_RELEASE}" >> $GITHUB_ENV
+  #       echo "LATEST_PRE_RELEASE_TAG=$LATEST_PRE_RELEASE_TAG" >> $GITHUB_ENV
+  #       echo "RELEASE_TAG=${LATEST_PRE_RELEASE_TAG%-rc*}" >> $GITHUB_ENV
+  #       echo "GIT_BRANCH=production" >> $GITHUB_ENV
+  #   - name: Initialize mandatory git config
+  #     run: |
+  #       git config --local user.name "jenkinsabraxas"
+  #       git config --local user.email "services@grupoabraxas.com" 
+  #   - name: Create tag 
+  #     run: |
+  #       git tag -a v${{ env.RELEASE_TAG }} -m "Generated by jenkinsabraxas with GA"
+  #       git push origin v${{ env.RELEASE_TAG }}
+  #   - name: Delete release branch if it exists
+  #     run: |
+  #       # Check if branch rc exists in remote
+  #       if [[ $(git ls-remote --heads origin rc/${{ env.RELEASE_TAG }} | wc -l) -ne 0 ]]; then
+  #         git push origin --delete rc/${{ env.RELEASE_TAG }}
+  #       fi
+  #       # Check if branch rc exists in local
+  #       if [[ $(git branch --list rc/${{ env.RELEASE_TAG }} | wc -l) -ne 0 ]]; then
+  #         git branch -d rc/${{ env.RELEASE_TAG }}
+  #       fi        
+  #   - name: Delete Older Release
+  #     uses: dev-drprasad/delete-tag-and-release@v0.2.1
+  #     with:
+  #       delete_release: true 
+  #       tag_name: ${{ env.LATEST_PRE_RELEASE_TAG }}
+  #     env:
+  #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #   - name: Build Changelog
+  #     id: build_changelog
+  #     uses: mikepenz/release-changelog-builder-action@v3.5.0
+  #     with:
+  #       configuration: .github/config/configuration.json
+  #       fromTag: ${{ env.LATEST_RELEASE }}
+  #       toTag: v${{ env.RELEASE_TAG }}     
+  #     env:
+  #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}         
+  #   - name: Create Release
+  #     id: release
+  #     uses: ncipollo/release-action@v1
+  #     with:
+  #       name: ${{ env.RELEASE_TAG }}
+  #       draft: false
+  #       allowUpdates: true
+  #       updateOnlyUnreleased: false
+  #       generateReleaseNotes: false
+  #       prerelease: false
+  #       tag: v${{ env.RELEASE_TAG }}
+  #       body: ${{steps.build_changelog.outputs.changelog}}          
+  #   - name: Configure AWS Credentials
+  #     uses: aws-actions/configure-aws-credentials@v1
+  #     with:
+  #       aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #       aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #       aws-region: us-east-1
+  #   - name: Login to Amazon ECR
+  #     id: login-ecr
+  #     uses: aws-actions/amazon-ecr-login@v1
+  #   - name: Push arkon-inquisitor    
+  #     run: |
+  #       PULL_TAG=${{ env.LATEST_PRE_RELEASE_TAG }}
+  #       EXIST=$(aws ecr describe-images --repository-name $REPOSITORY --query 'imageDetails[*].imageTags' | grep $PULL_TAG |wc -l)
+  #       if [ $EXIST -gt  0 ]; then 
+  #         docker pull $DOCKER_REGISTRY/$REPOSITORY:$PULL_TAG
+  #         docker tag $DOCKER_REGISTRY/$REPOSITORY:$PULL_TAG $DOCKER_REGISTRY/$REPOSITORY:$RELEASE          
+  #         #docker push $DOCKER_REGISTRY/$REPOSITORY:$RELEASE          
+  #       else
+  #         echo "- Nothing to do"
+  #       fi 
+  #     env:
+  #       RELEASE: ${{ env.RELEASE_TAG }}
+  #       DOCKER_REGISTRY: 744752950324.dkr.ecr.us-east-1.amazonaws.com
+  #       REPOSITORY: arkon-inquisitor
+  #   - name: Push arkon-inquisitor-init
+  #     run: |
+  #       PULL_TAG=$(aws ecr describe-images --repository-name $REPOSITORY  --query 'imageDetails[*].imageTags' | jq -r '.[] | map(select(test("^'$RELEASE'-rc"))) | .[]' | sort  -r | head -n1)
+  #       #EXIST=$(aws ecr describe-images --repository-name $REPOSITORY --query 'imageDetails[*].imageTags' | grep $PULL_TAG |wc -l)
+  #       EXIST=$(aws ecr describe-images --repository-name $REPOSITORY  --query 'imageDetails[*].imageTags' | jq -r '.[] | map(select(test("^'$RELEASE'-rc"))) | .[]' | sort  -r | head -n1 |wc -l)        
+  #       if [ $EXIST -gt  0 ]; then 
+  #         docker pull $DOCKER_REGISTRY/$REPOSITORY:$PULL_TAG
+  #         docker tag $DOCKER_REGISTRY/$REPOSITORY:$PULL_TAG $DOCKER_REGISTRY/$REPOSITORY:$RELEASE          
+  #         #docker push $DOCKER_REGISTRY/$REPOSITORY:$RELEASE
+  #       else
+  #         echo "- Nothing to do"
+  #       fi 
+  #     env:
+  #       RELEASE: ${{ env.RELEASE_TAG }}
+  #       DOCKER_REGISTRY: 744752950324.dkr.ecr.us-east-1.amazonaws.com
+  #       REPOSITORY: arkon-inquisitor-init
+  #   - name: Push arkon-inquisitor-migrations     
+  #     run: |
+  #       PULL_TAG=$(aws ecr describe-images --repository-name $REPOSITORY  --query 'imageDetails[*].imageTags' | jq -r '.[] | map(select(test("^'$RELEASE'-rc"))) | .[]' | sort  -r | head -n1)
+  #       EXIST=$(aws ecr describe-images --repository-name $REPOSITORY  --query 'imageDetails[*].imageTags' | jq -r '.[] | map(select(test("^'$RELEASE'-rc"))) | .[]' | sort  -r | head -n1 |wc -l)        
+  #       if [ $EXIST -gt  0 ]; then 
+  #         docker pull $DOCKER_REGISTRY/$REPOSITORY:$PULL_TAG
+  #         docker tag $DOCKER_REGISTRY/$REPOSITORY:$PULL_TAG $DOCKER_REGISTRY/$REPOSITORY:$RELEASE          
+  #         #docker push $DOCKER_REGISTRY/$REPOSITORY:$RELEASE          
+  #       else
+  #         echo "- Nothing to do"
+  #       fi 
+  #     env:
+  #       RELEASE: ${{ env.RELEASE_TAG }}
+  #       DOCKER_REGISTRY: 744752950324.dkr.ecr.us-east-1.amazonaws.com
+  #       REPOSITORY: arkon-inquisitor-migrations
+  #   - name: Push arkon-inquisitor-xml-migrations     
+  #     run: |
+  #       PULL_TAG=$(aws ecr describe-images --repository-name $REPOSITORY  --query 'imageDetails[*].imageTags' | jq -r '.[] | map(select(test("^'$RELEASE'-rc"))) | .[]' | sort  -r | head -n1)
+  #       EXIST=$(aws ecr describe-images --repository-name $REPOSITORY  --query 'imageDetails[*].imageTags' | jq -r '.[] | map(select(test("^'$RELEASE'-rc"))) | .[]' | sort  -r | head -n1 |wc -l)        
+  #       if [ $EXIST -gt  0 ]; then 
+  #         docker pull $DOCKER_REGISTRY/$REPOSITORY:$PULL_TAG
+  #         docker tag $DOCKER_REGISTRY/$REPOSITORY:$PULL_TAG $DOCKER_REGISTRY/$REPOSITORY:$RELEASE          
+  #         #docker push $DOCKER_REGISTRY/$REPOSITORY:$RELEASE          
+  #       else
+  #         echo "- Nothing to do"
+  #       fi 
+  #     env:
+  #       RELEASE: ${{ env.RELEASE_TAG }}
+  #       DOCKER_REGISTRY: 744752950324.dkr.ecr.us-east-1.amazonaws.com
+  #       REPOSITORY: arkon-inquisitor-xml-migrations
+  #   # - name: Send notificaion to Slack
+  #   #   uses: rtCamp/action-slack-notify@v2
+  #   #   env:
+  #   #     SLACK_CHANNEL: arkon-releases
+  #   #     SLACK_COLOR: ${{ job.status }}
+  #   #     SLACK_MESSAGE: 'New release: `${{ env.RELEASE_TAG }}` in branch: `production` :rocket:'
+  #   #     SLACK_TITLE: Arkon Inquisitor
+  #   #     SLACK_USERNAME: 'Release in Arkon-Prod'
+  #   #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK}}
+  #   # - name: Logout of Amazon ECR
+  #   #   if: always()
+  #     run: docker logout ${{ steps.login-ecr.outputs.registry }}
