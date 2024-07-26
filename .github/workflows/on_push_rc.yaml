@@ -1,14 +1,12 @@
-name: Detect PR Merge
+name: Detect Merge Not from PR
 
 on:
   push:
     branches:
-      - main
-  pull_request:
-    types: [closed]
+      - main  # Cambia 'main' por la rama que te interese
 
 jobs:
-  detect-pr-merge:
+  detect-merge:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,19 +18,33 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-      - name: Determine if this is a merge from a PR
-        id: check_pr_merge
+      - name: Check if commit is a merge commit
+        id: check_merge_commit
         run: |
-          if [ "${{ github.event.pull_request.merged }}" == "true" ]; then
-            echo "is_pr_merge=true" >> $GITHUB_ENV
+          if [ $(git rev-parse --verify -q HEAD^2) ]; then
+            echo "is_merge_commit=true" >> $GITHUB_ENV
           else
-            echo "is_pr_merge=false" >> $GITHUB_ENV
+            echo "is_merge_commit=false" >> $GITHUB_ENV
+          fi
+
+      - name: Check if merge commit is not from PR
+        id: check_not_pr
+        run: |
+          if [ "${{ env.is_merge_commit }}" = "true" ]; then
+            # Check if there is no PR associated with this commit
+            if ! git log -1 --pretty=%B | grep -q "Merge pull request"; then
+              echo "is_merge_not_pr=true" >> $GITHUB_ENV
+            else
+              echo "is_merge_not_pr=false" >> $GITHUB_ENV
+            fi
+          else
+            echo "is_merge_not_pr=false" >> $GITHUB_ENV
           fi
 
       - name: Output result
         run: |
-          if [ "${{ env.is_pr_merge }}" = "true" ]; then
-            echo "This commit is a merge from a PR."
+          if [ "${{ env.is_merge_not_pr }}" = "true" ]; then
+            echo "This merge commit is not from a PR."
           else
-            echo "This commit is not a merge from a PR."
+            echo "This is either not a merge commit or it is a merge from a PR."
           fi
