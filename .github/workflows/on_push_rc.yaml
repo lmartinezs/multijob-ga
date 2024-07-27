@@ -3,7 +3,7 @@ name: Detect Merge Not from PR
 on:
   push:
     branches:
-      - main  # Cambia 'main' por la rama que te interese
+      - rc/**  # Cambia 'main' por la rama que te interese
 
 jobs:
   detect-merge:
