@@ -62,8 +62,8 @@ jobs:
       id: cc
       with:
         project: "."
-        directory: "."
-        prefix: "v"
+        directory: "controller"
+        prefix: "controller"
     - name: Initialize mandatory git config
       run: |
         git config --local user.name "lmartinezs"
@@ -76,7 +76,7 @@ jobs:
         fi
         echo "PRE_RELEASE_BRANCH=${{ steps.cc.outputs.calculated_next_version }}" >> $GITHUB_ENV
         echo "NEW_TAG=${{ steps.cc.outputs.calculated_next_version }}-rc.0" >> $GITHUB_ENV
-        echo "LATEST_RELEASE=$(gh release list | grep -E 'Latest' | awk -F' ' '{print $3}')" >> $GITHUB_ENV
+        echo "LATEST_RELEASE=$(gh release list | grep -P "^${env.MICROFRONT_NAME}/\d+\.\d+\.\d+\trelease" | awk -F' ' '{print $3}')" >> $GITHUB_ENV
     - name: Create branch rc
       run: |
         git checkout -b rc/${{ env.PRE_RELEASE_BRANCH }}
