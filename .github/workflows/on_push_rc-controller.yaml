@@ -34,10 +34,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ $(gh release list | grep -P "^${env.MICROFRONT_NAME}/\d+\.\d+\.\d+\tPre-release" | wc -l) -ne 0 ]]; then
-            PRE_RELEASE_BRANCH=$(gh release list | grep -P "^${env.MICROFRONT_NAME}/\d+\.\d+\.\d+\tPre-release" | awk -F' ' '{print $1}')
-            LATEST_PRERELEASE_TAG=$(gh release list | grep -P "^${env.MICROFRONT_NAME}/\d+\.\d+\.\d+\tPre-release" | awk -F' ' '{print $3}')
-            LATEST_RELEASE=$(gh release list | grep -P "^${env.MICROFRONT_NAME}/\d+\.\d+\.\d+\trelease" | awk -F' ' '{print $3}')
+          if [[ $(gh release list | grep -P "^$MICROFRONT_NAME/\d+\.\d+\.\d+\tPre-release" | wc -l) -ne 0 ]]; then
+            PRE_RELEASE_BRANCH=$(gh release list | grep -P "^$MICROFRONT_NAME/\d+\.\d+\.\d+\tPre-release" | awk -F' ' '{print $1}')
+            LATEST_PRERELEASE_TAG=$(gh release list | grep -P "^$MICROFRONT_NAME/\d+\.\d+\.\d+\tPre-release" | awk -F' ' '{print $3}')
+            LATEST_RELEASE=$(gh release list | grep -P "^$MICROFRONT_NAME/\d+\.\d+\.\d+\trelease" | awk -F' ' '{print $3}')
             echo "Current Pre-release: $LATEST_PRERELEASE_TAG in branch rc/$PRE_RELEASE_BRANCH"
 
             NEXT_DIGIT=$((LAST_DIGIT=$(echo $LATEST_PRERELEASE_TAG | cut -d 'c' -f 2 | cut -d '.' -f 2)+1))
@@ -106,13 +106,13 @@ jobs:
           echo "looking for $DOCKER_REPOSITORY:$GIT_HASH"          
           repo="$DOCKER_REGISTRY/$DOCKER_REPOSITORY"
           token=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$repo:pull" -u "$DOCKER_USERNAME:$DOCKER_PASSWORD" | jq -r '.token')
-          IMAGE_META=$(curl -H "Authorization: Bearer $token" -s "https://registry-1.docker.io/v2/$repo/tags/list" | jq '.' | grep "$GIT_HASH-${env.MICROFRONT_NAME}")
+          IMAGE_META=$(curl -H "Authorization: Bearer $token" -s "https://registry-1.docker.io/v2/$repo/tags/list" | jq '.' | grep "$GIT_HASH-$MICROFRONT_NAME")
           
           if [[ ! -z $IMAGE_META ]]; then
             echo "$DOCKER_REPOSITORY:$GIT_HASH found"
-            docker pull $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-${env.MICROFRONT_NAME}
-            docker tag $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-${env.MICROFRONT_NAME} $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-${env.MICROFRONT_NAME}
-            docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-${env.MICROFRONT_NAME}
+            docker pull $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-$MICROFRONT_NAME
+            docker tag $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-$MICROFRONT_NAME $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-$MICROFRONT_NAME
+            docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-$MICROFRONT_NAME
           else
             TIMESTAMP=$(date +%s)
             docker build  -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}-$TIMESTAMP -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8} -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:latest .
