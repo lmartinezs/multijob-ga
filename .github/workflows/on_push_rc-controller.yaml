@@ -176,6 +176,8 @@ jobs:
             This PR was automatically created in order to update the `develop` branch 
             with changes from branch: `${{ needs.pre-release.outputs.pre-release-branch }}` and pre-release: `${{ needs.pre-release.outputs.new-tag }}`
         continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   open-pr-to-production:
     needs: pre-release
     runs-on: ubuntu-latest
@@ -185,11 +187,13 @@ jobs:
         with:          
           github-token: ${{ secrets.GITHUB_TOKEN }}
           head: rc/${{ needs.pre-release.outputs.pre-release-branch }}
-          base: production/$MICROFRONT_NAME
+          base: production/controller
           title: rc/${{ needs.pre-release.outputs.pre-release-branch }}  into production
-          reviewers: "Lmartinezs"
+          reviewers: "lmartinezs"
           body: |            
             This PR was automatically created 
             in order to release `${{ needs.pre-release.outputs.new-tag }}` 
-            and merge `${{ needs.pre-release.outputs.pre-release-branch }}` into production/$MICROFRONT_NAME branch
-        continue-on-error: true
+            and merge `${{ needs.pre-release.outputs.pre-release-branch }}` into production/controller branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true        
