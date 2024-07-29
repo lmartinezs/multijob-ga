@@ -166,8 +166,7 @@ jobs:
     steps:
       - name: Create pull request to develop
         uses: thomaseizinger/create-pull-request@1.0.0
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:          
           github-token: ${{ secrets.GITHUB_TOKEN }}
           head: rc/${{ needs.pre-release.outputs.pre-release-branch }}
           base: develop
@@ -183,15 +182,14 @@ jobs:
     steps:
       - name: Create pull request to production
         uses: thomaseizinger/create-pull-request@1.0.0
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:          
           github-token: ${{ secrets.GITHUB_TOKEN }}
           head: rc/${{ needs.pre-release.outputs.pre-release-branch }}
-          base: production
+          base: production/$MICROFRONT_NAME
           title: rc/${{ needs.pre-release.outputs.pre-release-branch }}  into production
           reviewers: "Lmartinezs"
           body: |            
             This PR was automatically created 
             in order to release `${{ needs.pre-release.outputs.new-tag }}` 
-            and merge `${{ needs.pre-release.outputs.pre-release-branch }}` into production branch
+            and merge `${{ needs.pre-release.outputs.pre-release-branch }}` into production/$MICROFRONT_NAME branch
         continue-on-error: true
