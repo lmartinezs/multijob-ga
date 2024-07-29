@@ -1,10 +1,12 @@
-name: Create-Pre-Release
+name: "[controller] Create Pre-Release"
 on:
   workflow_dispatch:
     inputs:
       commit:
         description: 'Hash commit for pre-release'
         required: true        
+env:
+  MICROFRONT_NAME: controller
 jobs:
   check-prerelease:
     runs-on: ubuntu-latest
@@ -23,13 +25,13 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        if [[ $(gh release list | grep -E 'Draft|Pre-release' | wc -l) -ne 0 ]]; then
+        if [[ $(gh release list | grep -P "^${env.MICROFRONT_NAME}/\d+\.\d+\.\d+\tPre-release"  | wc -l) -ne 0 ]]; then
           echo "There is an open Pre-release"
           PRE_RELEASE=current_one
-          PRE_RELEASE_BRANCH=rc/$(gh release list | grep -E 'Pre-release' | awk -F' ' '{print $1}')
+          PRE_RELEASE_BRANCH=rc/$(gh release list | grep -P "^${env.MICROFRONT_NAME}/\d+\.\d+\.\d+\tPre-release" | awk -F' ' '{print $1}')
           echo "PRE_RELEASE_BRANCH=${PRE_RELEASE_BRANCH}" >> $GITHUB_ENV
 
-          LATEST_PRERELEASE_TAG=$(gh release list | grep -E 'Pre-release' | awk -F' ' '{print $3}')
+          LATEST_PRERELEASE_TAG=$(gh release list | grep -P "^${env.MICROFRONT_NAME}/\d+\.\d+\.\d+\tPre-release" | awk -F' ' '{print $3}')
           echo "Current Pre-release: $LATEST_PRERELEASE_TAG in branch $PRE_RELEASE_BRANCH"
 
         else
