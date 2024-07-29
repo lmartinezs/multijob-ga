@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 0          
       - name: Push is from rc branch?      
         run: |          
-          FROMRC=$(git log -1 --pretty=%s HEAD | grep -e ".*from /rc/[0-9]" | wc -l)
+          FROMRC=$(git log -1 --pretty=%s HEAD | grep -e ".*from /rc/$MICROFRONT_NAME/[0-9]" | wc -l)
           #FROMRC='0'
           echo "FROMRC=$FROMRC" >> $GITHUB_ENV          
         env:
