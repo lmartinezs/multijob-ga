@@ -2,7 +2,7 @@ name: Push to RC Controller
 on:
   push:
     branches:
-      - 'controller/rc/**'
+      - 'rc/controller/**'
 env:
   MICROFRONT_NAME: controller
 jobs:
