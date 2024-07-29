@@ -25,11 +25,7 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: '18.20.3'
-      - run: npm install -g yarn
-      - run: git config --global url."https://".insteadOf git://
-      - run: yarn install
-      - run: yarn audit --summary
-        continue-on-error: true
+      - run: git config --global url."https://".insteadOf git://      
       - name: Check latest release, tag and rc/* branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,31 +92,35 @@ jobs:
           prerelease: true
           tag: ${{ env.NEW_TAG }}    
           body: ${{steps.build_changelog.outputs.changelog}} 
-      - name: Build, tag and push image
-        env:
-          DOCKER_REGISTRY: lmartinezs
-          DOCKER_REPOSITORY: reactapp
-          GIT_HASH:  ${{ env.GIT_HASH }}
-          DOCKER_USERNAME:  ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD:  ${{ secrets.DOCKER_PASSWORD }}
+      # - name: Build, tag and push image
+      #   env:
+      #     DOCKER_REGISTRY: lmartinezs
+      #     DOCKER_REPOSITORY: reactapp
+      #     GIT_HASH: ${{ env.GIT_HASH }}
+      #     DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      #     DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-        run: |
-          echo "looking for $DOCKER_REPOSITORY:$GIT_HASH"          
-          repo="$DOCKER_REGISTRY/$DOCKER_REPOSITORY"
-          token=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$repo:pull" -u "$DOCKER_USERNAME:$DOCKER_PASSWORD" | jq -r '.token')
-          IMAGE_META=$(curl -H "Authorization: Bearer $token" -s "https://registry-1.docker.io/v2/$repo/tags/list" | jq '.' | grep "$GIT_HASH-$MICROFRONT_NAME")
+      #   run: |
+      #     echo "looking for $DOCKER_REPOSITORY:$GIT_HASH"          
+      #     repo="$DOCKER_REGISTRY/$DOCKER_REPOSITORY"
+      #     token=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$repo:pull" -u "$DOCKER_USERNAME:$DOCKER_PASSWORD" | jq -r '.token')
+      #     curl -H "Authorization: Bearer $token" -s "https://registry-1.docker.io/v2/$repo/tags/list"  | jq '.'
+      #     IMAGE_META=$(curl -H "Authorization: Bearer $token" -s "https://registry-1.docker.io/v2/$repo/tags/list" | jq '.' | grep "$GIT_HASH-$MICROFRONT_NAME")
           
-          if [[ ! -z $IMAGE_META ]]; then
-            echo "$DOCKER_REPOSITORY:$GIT_HASH found"
-            docker pull $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-$MICROFRONT_NAME
-            docker tag $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-$MICROFRONT_NAME $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-$MICROFRONT_NAME
-            docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-$MICROFRONT_NAME
-          else
-            TIMESTAMP=$(date +%s)
-            docker build  -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}-$TIMESTAMP -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8} -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:latest .
-            docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}
-            docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:latest
-          fi  
+      #     if [[ ! -z $IMAGE_META ]]; then
+      #       echo "$DOCKER_REPOSITORY:$GIT_HASH found"
+      #       docker pull $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-$MICROFRONT_NAME
+      #       docker tag $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-$MICROFRONT_NAME $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-$MICROFRONT_NAME
+      #       docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-$MICROFRONT_NAME
+      #     else
+      #       TIMESTAMP=$(date +%s)
+      #       npm install -g yarn      
+      #       yarn install
+      #       yarn audit --summary
+      #       docker build  -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}-$TIMESTAMP -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8} -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:latest .
+      #       docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}
+      #       docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:latest
+      #     fi  
           
       # - name: Build, tag and push image to Azure ACR
       #   env:
@@ -166,8 +166,7 @@ jobs:
     steps:
       - name: Create pull request to develop
         uses: thomaseizinger/create-pull-request@1.0.0
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:          
           github-token: ${{ secrets.GITHUB_TOKEN }}
           head: rc/${{ needs.pre-release.outputs.pre-release-branch }}
           base: develop
@@ -177,21 +176,24 @@ jobs:
             This PR was automatically created in order to update the `develop` branch 
             with changes from branch: `${{ needs.pre-release.outputs.pre-release-branch }}` and pre-release: `${{ needs.pre-release.outputs.new-tag }}`
         continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   open-pr-to-production:
     needs: pre-release
     runs-on: ubuntu-latest
     steps:
       - name: Create pull request to production
         uses: thomaseizinger/create-pull-request@1.0.0
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:          
           github-token: ${{ secrets.GITHUB_TOKEN }}
           head: rc/${{ needs.pre-release.outputs.pre-release-branch }}
-          base: production
+          base: production/controller
           title: rc/${{ needs.pre-release.outputs.pre-release-branch }}  into production
-          reviewers: "Lmartinezs"
+          reviewers: "lmartinezs"
           body: |            
             This PR was automatically created 
             in order to release `${{ needs.pre-release.outputs.new-tag }}` 
-            and merge `${{ needs.pre-release.outputs.pre-release-branch }}` into production branch
-        continue-on-error: true
+            and merge `${{ needs.pre-release.outputs.pre-release-branch }}` into production/controller branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true        
