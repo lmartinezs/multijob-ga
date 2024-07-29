@@ -61,9 +61,9 @@ jobs:
       uses: ./.github/actions/my-action
       id: cc
       with:
-        project: "."
+        project: "controller"
         directory: "controller"
-        prefix: "controller"
+        prefix: "controller/"
     - name: Initialize mandatory git config
       run: |
         git config --local user.name "lmartinezs"
