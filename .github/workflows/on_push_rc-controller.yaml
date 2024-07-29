@@ -108,6 +108,7 @@ jobs:
           echo "looking for $DOCKER_REPOSITORY:$GIT_HASH"          
           repo="$DOCKER_REGISTRY/$DOCKER_REPOSITORY"
           token=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$repo:pull" -u "$DOCKER_USERNAME:$DOCKER_PASSWORD" | jq -r '.token')
+          curl -H "Authorization: Bearer $token" -s "https://registry-1.docker.io/v2/$repo/tags/list"  | jq '.'
           IMAGE_META=$(curl -H "Authorization: Bearer $token" -s "https://registry-1.docker.io/v2/$repo/tags/list" | jq '.' | grep "$GIT_HASH-$MICROFRONT_NAME")
           
           if [[ ! -z $IMAGE_META ]]; then
