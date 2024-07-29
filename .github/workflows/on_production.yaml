@@ -149,6 +149,9 @@ jobs:
         echo "LATEST_PRE_RELEASE_TAG=$LATEST_PRE_RELEASE_TAG" >> $GITHUB_ENV
         echo "RELEASE_TAG=${LATEST_PRE_RELEASE_TAG%-rc*}" >> $GITHUB_ENV
         echo "GIT_BRANCH=production/$MICROFRONT_NAME" >> $GITHUB_ENV
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Initialize mandatory git config
       run: |
         git config --local user.name "jenkinsabraxas"
