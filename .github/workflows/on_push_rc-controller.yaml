@@ -92,35 +92,35 @@ jobs:
           prerelease: true
           tag: ${{ env.NEW_TAG }}    
           body: ${{steps.build_changelog.outputs.changelog}} 
-      - name: Build, tag and push image
-        env:
-          DOCKER_REGISTRY: lmartinezs
-          DOCKER_REPOSITORY: reactapp
-          GIT_HASH: ${{ env.GIT_HASH }}
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      # - name: Build, tag and push image
+      #   env:
+      #     DOCKER_REGISTRY: lmartinezs
+      #     DOCKER_REPOSITORY: reactapp
+      #     GIT_HASH: ${{ env.GIT_HASH }}
+      #     DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      #     DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-        run: |
-          echo "looking for $DOCKER_REPOSITORY:$GIT_HASH"          
-          repo="$DOCKER_REGISTRY/$DOCKER_REPOSITORY"
-          token=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$repo:pull" -u "$DOCKER_USERNAME:$DOCKER_PASSWORD" | jq -r '.token')
-          curl -H "Authorization: Bearer $token" -s "https://registry-1.docker.io/v2/$repo/tags/list"  | jq '.'
-          IMAGE_META=$(curl -H "Authorization: Bearer $token" -s "https://registry-1.docker.io/v2/$repo/tags/list" | jq '.' | grep "$GIT_HASH-$MICROFRONT_NAME")
+      #   run: |
+      #     echo "looking for $DOCKER_REPOSITORY:$GIT_HASH"          
+      #     repo="$DOCKER_REGISTRY/$DOCKER_REPOSITORY"
+      #     token=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$repo:pull" -u "$DOCKER_USERNAME:$DOCKER_PASSWORD" | jq -r '.token')
+      #     curl -H "Authorization: Bearer $token" -s "https://registry-1.docker.io/v2/$repo/tags/list"  | jq '.'
+      #     IMAGE_META=$(curl -H "Authorization: Bearer $token" -s "https://registry-1.docker.io/v2/$repo/tags/list" | jq '.' | grep "$GIT_HASH-$MICROFRONT_NAME")
           
-          if [[ ! -z $IMAGE_META ]]; then
-            echo "$DOCKER_REPOSITORY:$GIT_HASH found"
-            docker pull $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-$MICROFRONT_NAME
-            docker tag $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-$MICROFRONT_NAME $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-$MICROFRONT_NAME
-            docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-$MICROFRONT_NAME
-          else
-            TIMESTAMP=$(date +%s)
-            npm install -g yarn      
-            yarn install
-            yarn audit --summary
-            docker build  -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}-$TIMESTAMP -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8} -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:latest .
-            docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}
-            docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:latest
-          fi  
+      #     if [[ ! -z $IMAGE_META ]]; then
+      #       echo "$DOCKER_REPOSITORY:$GIT_HASH found"
+      #       docker pull $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-$MICROFRONT_NAME
+      #       docker tag $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$GIT_HASH-$MICROFRONT_NAME $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-$MICROFRONT_NAME
+      #       docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:$PRE_RELEASE-$MICROFRONT_NAME
+      #     else
+      #       TIMESTAMP=$(date +%s)
+      #       npm install -g yarn      
+      #       yarn install
+      #       yarn audit --summary
+      #       docker build  -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}-$TIMESTAMP -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8} -t $DOCKER_REGISTRY/$DOCKER_REPOSITORY:latest .
+      #       docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:${GITHUB_SHA::8}
+      #       docker push $DOCKER_REGISTRY/$DOCKER_REPOSITORY:latest
+      #     fi  
           
       # - name: Build, tag and push image to Azure ACR
       #   env:
