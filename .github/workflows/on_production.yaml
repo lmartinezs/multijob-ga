@@ -184,7 +184,7 @@ jobs:
       uses: mikepenz/release-changelog-builder-action@v3.5.0
       with:
         configuration: .github/config/configuration.json
-        fromTag: controller/${{ env.LATEST_RELEASE }}
+        fromTag: ${{ env.LATEST_RELEASE }}
         toTag: controller/${{ env.RELEASE_TAG }}     
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}         
@@ -192,7 +192,7 @@ jobs:
       id: release
       uses: ncipollo/release-action@v1
       with:
-        name: ${{ env.RELEASE_TAG }}
+        name: controller/${{ env.RELEASE_TAG }}
         draft: false
         allowUpdates: true
         updateOnlyUnreleased: false
