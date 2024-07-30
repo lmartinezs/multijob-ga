@@ -62,8 +62,8 @@ jobs:
       id: cc
       with:
         project: "."
-        directory: "controller"
-        prefix: "controller/"
+        directory: "${{ env.MICROFRONT_NAME }}"
+        prefix: "${{ env.MICROFRONT_NAME }}/"
     - name: Initialize mandatory git config
       run: |
         git config --local user.name "lmartinezs"
