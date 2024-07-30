@@ -96,6 +96,10 @@ jobs:
             echo "There are no changes about repository: $REPOSITORY"
           fi
       
+      - name: Initialize mandatory git config
+        run: |
+          git config --local user.name "jenkinsabraxas"
+          git config --local user.email "services@grupoabraxas.com"
       - name: Create tag
         if:  ${{ env.VALID_TAG == 'true' }} 
         run: |
