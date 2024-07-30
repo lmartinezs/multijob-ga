@@ -36,7 +36,7 @@ jobs:
           fetch-depth: 0
       - name: Checkout pre-release and latest release
         run: |
-            LATEST_RELEASE_TAG=$(gh release list | grep -P "^$MICROFRONT_NAME/\d+\.\d+\.\d+\tLatest" | awk -F'/' '{print $2}')
+            LATEST_RELEASE_TAG=$(gh release list | grep -P "^$MICROFRONT_NAME/\d+\.\d+\.\d+\tLatest" | awk -F' ' '{print $3}'  | awk -F'/' '{print $2}')
             LATEST_PRE_RELEASE_TAG=$(gh release list | grep -P "^$MICROFRONT_NAME/\d+\.\d+\.\d+\tPre-release" | awk -F' ' '{print $1}' | awk -F'/' '{print $2}')
             echo "LATEST_PRE_RELEASE_TAG=$LATEST_PRE_RELEASE_TAG" >> $GITHUB_ENV
             NEXT_DIGIT=$((LAST_DIGIT=$(echo $LATEST_RELEASE_TAG | cut -d 'c' -f 3 | cut -d '.' -f 3)+1))
