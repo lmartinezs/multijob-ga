@@ -114,8 +114,8 @@ jobs:
         uses: mikepenz/release-changelog-builder-action@v3.5.0
         with:
           configuration: .github/config/configuration.json
-          fromTag: ${{ env.LATEST_RELEASE }}
-          toTag: v${{ env.NEW_TAG }}
+          fromTag: controller/${{ env.LATEST_RELEASE }}
+          toTag: controller/${{ env.NEW_TAG }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create Release
@@ -129,7 +129,7 @@ jobs:
           updateOnlyUnreleased: true
           generateReleaseNotes: false
           prerelease: false
-          tag: v${{ env.NEW_TAG }}
+          tag: controller/${{ env.NEW_TAG }}
           body: ${{steps.build_changelog.outputs.changelog}}
 
   publish-to-production:
