@@ -127,7 +127,7 @@ jobs:
         id: release
         uses: ncipollo/release-action@v1
         with:
-          name: ${{ env.NEW_TAG }}
+          name: controller/${{ env.NEW_TAG }}
           draft: false
           allowUpdates: true
           updateOnlyUnreleased: true
