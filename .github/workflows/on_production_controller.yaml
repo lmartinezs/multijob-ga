@@ -53,7 +53,7 @@ jobs:
                 VALID_TAG='true'
                 NEW_TAG=$NEXT_TAG
             fi
-
+            echo "LATEST_RELEASE_TAG=$LATEST_RELEASE_TAG" >> $GITHUB_ENV
             echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
             echo "VALID_TAG=$VALID_TAG" >> $GITHUB_ENV
         env:
@@ -118,7 +118,7 @@ jobs:
         uses: mikepenz/release-changelog-builder-action@v3.5.0
         with:
           configuration: .github/config/configuration.json
-          fromTag: controller/${{ env.LATEST_RELEASE }}
+          fromTag: controller/${{ env.LATEST_RELEASE_TAG }}
           toTag: controller/${{ env.NEW_TAG }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
