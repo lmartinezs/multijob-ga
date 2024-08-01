@@ -24,9 +24,19 @@ jobs:
           registry-url: "https://npm.pkg.github.com"
           # Defaults to the user or organization that owns the workflow file
           scope: "@lmartinezs"
-      - name: Install dependencies
-        run: yarn
-      - name: Publish package
-        run: yarn publish --tag controller/0.4.0
+      - name: Get latest release version
+        id: get_version
+        run: |
+          VERSION=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v//')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - name: Update package.json version
+        run: |
+          jq --arg version "$VERSION" '.version = $version' package.json > temp.json
+          mv temp.json package.json
+        shell: bash
+      - name: Publish to npm
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          yarn install
+          yarn publish --non-interactive --new-version $VERSION
