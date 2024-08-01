@@ -124,6 +124,17 @@ jobs:
           prerelease: false
           tag: ${{ env.MICROFRONT_NAME }}/${{ env.NEW_TAG }}
           body: ${{steps.build_changelog.outputs.changelog}}
+      - name: Update package.json version
+        run: |
+          jq --arg version "${{ env.NEW_TAG }}" '.version = $version' package.json > temp.json
+          mv temp.json package.json
+        shell: bash
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          yarn install
+          yarn publish --non-interactive --new-version ${{ env.NEW_TAG }}
 
   publish-to-production:
     needs: check-release
