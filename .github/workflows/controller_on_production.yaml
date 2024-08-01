@@ -25,7 +25,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
   publish-hotfix-to-production:
     needs: check-release
-    permissions: write-all
+    permissions:
+      contents: read
+      packages: write
     if: needs.check-release.outputs.from-rc == '0'
     runs-on: ubuntu-latest
     steps:
